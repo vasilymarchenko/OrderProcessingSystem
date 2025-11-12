@@ -1,0 +1,48 @@
+### Test Order Service API
+
+### Swagger UI
+# Open: http://localhost:5255/swagger
+
+### Create Order - Success Case
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "test@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 2
+    },
+    {
+      "productCode": "PROD-002",
+      "quantity": 1
+    }
+  ]
+}
+
+### Get Order by ID (replace {orderId} with actual ID from create response)
+GET http://localhost:5255/api/orders/{orderId}
+
+### Get All Orders
+GET http://localhost:5255/api/orders
+
+### Get Orders by Customer Email
+GET http://localhost:5255/api/orders?customerEmail=test@example.com
+
+### Get Orders by Status
+GET http://localhost:5255/api/orders?status=Pending
+
+### Create Another Order
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "john.doe@example.com",
+  "items": [
+    {
+      "productCode": "PROD-003",
+      "quantity": 5
+    }
+  ]
+}
