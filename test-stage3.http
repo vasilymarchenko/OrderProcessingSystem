@@ -1,0 +1,29 @@
+### Test Stage 3: RabbitMQ Integration
+### Make sure OrderService is running: dotnet run (from OrderService folder)
+### And RabbitMQ is running: docker ps (check for rabbitmq container)
+
+### Create Order - Should publish message to RabbitMQ
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "test@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 2
+    }
+  ]
+}
+
+### Get Order by ID (replace {orderId} with actual ID from previous response)
+GET http://localhost:5255/api/orders/{orderId}
+
+###
+### After creating an order:
+### 1. Check RabbitMQ Management UI: http://localhost:15672 (guest/guest)
+### 2. Go to "Exchanges" tab
+### 3. Look for exchange named "orders"
+### 4. Click on it and check the message count
+### 5. You should see the message was published with routing key "order.placed"
+###

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderProcessingSystem.Shared.Events;
+using OrderProcessingSystem.Shared.Messaging;
 using OrderService.Data;
 using OrderService.DTOs;
 using OrderService.Models;
@@ -12,11 +13,16 @@ namespace OrderService.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly OrderDbContext _context;
+    private readonly IMessagePublisher _publisher;
     private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(OrderDbContext context, ILogger<OrdersController> logger)
+    public OrdersController(
+        OrderDbContext context, 
+        IMessagePublisher publisher,
+        ILogger<OrdersController> logger)
     {
         _context = context;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -54,6 +60,19 @@ public class OrdersController : ControllerBase
 
         _logger.LogInformation("Order {OrderId} created for customer {CustomerEmail}", 
             order.Id, order.CustomerEmail);
+
+        // Publish OrderPlacedEvent to RabbitMQ
+        var orderPlacedEvent = new OrderPlacedEvent(
+            OrderId: order.Id,
+            CustomerEmail: order.CustomerEmail,
+            Items: order.Items.Select(i => new OrderItemDto(i.ProductCode, i.Quantity)).ToList(),
+            Timestamp: DateTime.UtcNow
+        );
+
+        await _publisher.PublishAsync("order.placed", orderPlacedEvent);
+
+        _logger.LogInformation("OrderPlacedEvent published for order {OrderId} with routing key 'order.placed'", 
+            order.Id);
 
         // Map to response
         var response = MapToResponse(order);
