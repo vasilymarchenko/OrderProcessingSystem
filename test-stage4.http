@@ -1,0 +1,85 @@
+### Stage 4 Testing: Inventory Service Integration
+
+### 1. Start InventoryService
+### Run in terminal: cd src/InventoryService/InventoryService && dotnet run
+
+### 2. Start OrderService  
+### Run in separate terminal: cd src/OrderService/OrderService && dotnet run
+
+### 3. Create Order with Available Inventory (PROD-001)
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "success@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 5
+    }
+  ]
+}
+
+### Expected: 
+### - OrderService logs: Order created
+### - InventoryService logs: Reserved 5 units of PROD-001
+### - RabbitMQ: "inventory.reserved" message published
+
+###
+
+### 4. Create Order with Insufficient Inventory (PROD-003)
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "fail@example.com",
+  "items": [
+    {
+      "productCode": "PROD-003",
+      "quantity": 1
+    }
+  ]
+}
+
+### Expected:
+### - OrderService logs: Order created
+### - InventoryService logs: Insufficient inventory for PROD-003
+### - RabbitMQ: "inventory.insufficient" message published
+
+###
+
+### 5. Create Order with Multiple Items
+POST http://localhost:5255/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "multi@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 2
+    },
+    {
+      "productCode": "PROD-002",
+      "quantity": 3
+    }
+  ]
+}
+
+###
+
+### 6. Verify in RabbitMQ Management UI
+### http://localhost:15672 (guest/guest)
+### - Check Exchanges → "orders"
+### - Check Queues → "inventory-queue"
+### - View published messages with routing keys:
+###   * order.placed
+###   * inventory.reserved
+###   * inventory.insufficient
+
+###
+
+### 7. Verify Inventory Database
+### Connect to PostgreSQL and check updated quantities:
+### psql -h localhost -U postgres -d inventory_db
+### SELECT * FROM "InventoryItems";
