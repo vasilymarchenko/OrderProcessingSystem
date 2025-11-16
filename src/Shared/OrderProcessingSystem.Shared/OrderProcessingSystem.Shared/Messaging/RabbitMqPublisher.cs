@@ -6,17 +6,12 @@ namespace OrderProcessingSystem.Shared.Messaging;
 
 public class RabbitMqPublisher : IMessagePublisher, IDisposable
 {
-    private readonly IConnection _connection;
     private readonly IChannel _channel;
     private readonly string _exchangeName;
 
-    public RabbitMqPublisher(string hostname, string exchangeName)
+    public RabbitMqPublisher(IConnection connection, string exchangeName)
     {
-        // TODO: rework! Get id of blocking calls
-        // TODO: use DI
-        var factory = new ConnectionFactory { HostName = hostname };
-        _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+        _channel = connection.CreateChannelAsync().GetAwaiter().GetResult();
         _exchangeName = exchangeName;
 
         // Declare exchange as Topic for flexible routing
@@ -54,7 +49,5 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
     {
         _channel?.CloseAsync().GetAwaiter().GetResult();
         _channel?.Dispose();
-        _connection?.CloseAsync().GetAwaiter().GetResult();
-        _connection?.Dispose();
     }
 }

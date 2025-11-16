@@ -96,12 +96,42 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<OrderResponse>>> GetOrders(
+    public async Task<ActionResult<PagedOrderResponse>> GetOrders(
+        [FromQuery] string? cursor = null,
+        [FromQuery] int pageSize = 20,
         [FromQuery] string? customerEmail = null,
         [FromQuery] OrderStatus? status = null)
     {
+        // Validate page size
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest("Page size must be between 1 and 100.");
+        }
+
+        // Parse cursor (format: timestamp_id)
+        DateTime? cursorTimestamp = null;
+        Guid? cursorId = null;
+
+        if (!string.IsNullOrWhiteSpace(cursor))
+        {
+            var parts = cursor.Split('_');
+            if (parts.Length == 2 &&
+                DateTime.TryParse(parts[0], null, System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp) &&
+                Guid.TryParse(parts[1], out var id))
+            {
+                cursorTimestamp = timestamp.Kind == DateTimeKind.Utc ? timestamp : timestamp.ToUniversalTime();
+                cursorId = id;
+            }
+            else
+            {
+                return BadRequest("Invalid cursor format.");
+            }
+        }
+
+        // Build query
         var query = _context.Orders.Include(o => o.Items).AsQueryable();
 
+        // Apply filters
         if (!string.IsNullOrWhiteSpace(customerEmail))
         {
             query = query.Where(o => o.CustomerEmail == customerEmail);
@@ -112,11 +142,46 @@ public class OrdersController : ControllerBase
             query = query.Where(o => o.Status == status.Value);
         }
 
+        // Apply cursor-based pagination
+        if (cursorTimestamp.HasValue && cursorId.HasValue)
+        {
+            query = query.Where(o => 
+                o.CreatedAt < cursorTimestamp.Value || 
+                (o.CreatedAt == cursorTimestamp.Value && o.Id.CompareTo(cursorId.Value) < 0));
+        }
+
+        // Order by CreatedAt descending, then by Id for consistent ordering
+        query = query.OrderByDescending(o => o.CreatedAt)
+                     .ThenByDescending(o => o.Id);
+
+        // Fetch one extra to determine if there are more results
         var orders = await query
-            .OrderByDescending(o => o.CreatedAt)
+            .Take(pageSize + 1)
             .ToListAsync();
 
-        return Ok(orders.Select(MapToResponse));
+        // Determine if there are more results
+        var hasMore = orders.Count > pageSize;
+        var ordersToReturn = hasMore ? orders.Take(pageSize).ToList() : orders;
+
+        // Generate next cursor from the last item
+        string? nextCursor = null;
+        if (hasMore && ordersToReturn.Any())
+        {
+            var lastOrder = ordersToReturn.Last();
+            nextCursor = $"{lastOrder.CreatedAt:O}_{lastOrder.Id}";
+        }
+
+        var response = new PagedOrderResponse(
+            Orders: ordersToReturn.Select(MapToResponse).ToList(),
+            NextCursor: nextCursor,
+            HasMore: hasMore
+        );
+
+        _logger.LogInformation(
+            "Listed {Count} orders with cursor pagination (HasMore: {HasMore})", 
+            ordersToReturn.Count, hasMore);
+
+        return Ok(response);
     }
 
     private static OrderResponse MapToResponse(Order order)

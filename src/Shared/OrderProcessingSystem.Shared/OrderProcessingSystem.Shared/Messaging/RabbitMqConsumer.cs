@@ -7,15 +7,12 @@ namespace OrderProcessingSystem.Shared.Messaging;
 
 public class RabbitMqConsumer : IMessageConsumer, IDisposable
 {
-    private readonly IConnection _connection;
     private readonly IChannel _channel;
     private readonly string _exchangeName;
 
-    public RabbitMqConsumer(string hostname, string exchangeName)
+    public RabbitMqConsumer(IConnection connection, string exchangeName)
     {
-        var factory = new ConnectionFactory { HostName = hostname };
-        _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+        _channel = connection.CreateChannelAsync().GetAwaiter().GetResult();
         _exchangeName = exchangeName;
     }
 
@@ -75,7 +72,5 @@ public class RabbitMqConsumer : IMessageConsumer, IDisposable
     {
         _channel?.CloseAsync().GetAwaiter().GetResult();
         _channel?.Dispose();
-        _connection?.CloseAsync().GetAwaiter().GetResult();
-        _connection?.Dispose();
     }
 }

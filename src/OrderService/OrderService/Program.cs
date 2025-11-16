@@ -11,14 +11,36 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("OrderDatabase")));
 
-// Configure RabbitMQ Publisher
+// Initialize RabbitMQ connection asynchronously before service registration
+var rabbitConfig = builder.Configuration.GetSection("RabbitMQ");
+var rabbitHost = rabbitConfig["Host"] ?? "localhost";
+var rabbitExchangeName = rabbitConfig["ExchangeName"] ?? "orders";
+var rabbitFactory = new RabbitMQ.Client.ConnectionFactory { HostName = rabbitHost };
+var rabbitConnection = await rabbitFactory.CreateConnectionAsync();
+
+// Register the pre-created RabbitMQ connection as singleton
+builder.Services.AddSingleton<RabbitMQ.Client.IConnection>(rabbitConnection);
+
+// Configure RabbitMQ Publisher (uses shared connection)
 builder.Services.AddSingleton<IMessagePublisher>(sp =>
 {
-    var config = builder.Configuration.GetSection("RabbitMQ");
-    var host = config["Host"] ?? "localhost";
-    var exchangeName = config["ExchangeName"] ?? "orders";
-    return new RabbitMqPublisher(host, exchangeName);
+    var connection = sp.GetRequiredService<RabbitMQ.Client.IConnection>();
+    return new RabbitMqPublisher(connection, rabbitExchangeName);
 });
+
+// Add health checks
+// Liveness: Fast check that the service is running (no dependencies checked)
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: new[] { "liveness" });
+
+// Readiness: Check if the service is ready to handle requests (dependencies checked)
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("OrderDatabase") ?? "", name: "postgres", tags: new[] { "readiness" })
+    .AddRabbitMQ(
+        factory: sp => sp.GetRequiredService<RabbitMQ.Client.IConnection>(),
+        name: "rabbitmq",
+        tags: new[] { "readiness" }
+    );
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -32,6 +54,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Map health check endpoints
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("liveness")
+});
+
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("readiness")
+});
 
 app.UseHttpsRedirection();
 app.MapControllers();
