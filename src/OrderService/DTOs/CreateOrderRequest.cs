@@ -1,6 +1,6 @@
 using OrderProcessingSystem.Shared.Events;
 
-namespace OrderService.DTOs;
+namespace OrderService.Application.DTOs;
 
 public record CreateOrderRequest(
     string CustomerEmail,

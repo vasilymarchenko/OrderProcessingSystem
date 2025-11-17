@@ -1,11 +1,19 @@
 using Microsoft.EntityFrameworkCore;
-using OrderService.Data;
+using OrderService.Infrastructure.Persistence;
+using OrderService.Application.Interfaces;
+using OrderService.Infrastructure.Persistence.Repositories;
 using OrderProcessingSystem.Shared.Messaging;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add FluentValidation
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // Configure Database
 builder.Services.AddDbContext<OrderDbContext>(options =>
@@ -27,6 +35,10 @@ builder.Services.AddSingleton<IMessagePublisher>(sp =>
     var connection = sp.GetRequiredService<RabbitMQ.Client.IConnection>();
     return new RabbitMqPublisher(connection, rabbitExchangeName);
 });
+
+// Register Application Services
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService.Application.Services.OrderService>();
 
 // Add health checks
 // Liveness: Fast check that the service is running (no dependencies checked)

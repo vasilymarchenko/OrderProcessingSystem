@@ -1,6 +1,4 @@
-using OrderService.Models;
-
-namespace OrderService.DTOs;
+namespace OrderService.Application.DTOs;
 
 public record PagedOrderResponse(
     IReadOnlyList<OrderResponse> Orders,

@@ -10,6 +10,48 @@ This project implements a distributed order processing system with three microse
 - **Inventory Service**: Manages inventory and validates stock availability
 - **Notification Service**: Sends notifications about order status
 
+### Clean Architecture Principles
+
+The OrderService follows **Clean/Onion Architecture** for maintainability and testability:
+
+```
+┌─────────────────────────────────────────────────┐
+│            API Layer (Controllers)              │ ← Presentation
+│  - Request/Response handling                    │
+│  - Input validation (FluentValidation)         │
+│  - HTTP concerns                                │
+└─────────────────────────────────────────────────┘
+                     ↓ depends on
+┌─────────────────────────────────────────────────┐
+│         Application Layer (Services)            │ ← Business Logic
+│  - IOrderService, IOrderRepository             │
+│  - Business orchestration                       │
+│  - Domain object manipulation                   │
+└─────────────────────────────────────────────────┘
+                     ↓ depends on
+┌─────────────────────────────────────────────────┐
+│           Domain Layer (Models)                 │ ← Core
+│  - Order, OrderItem (clean POCOs)              │
+│  - Business rules and domain logic              │
+│  - No infrastructure dependencies               │
+└─────────────────────────────────────────────────┘
+                     ↑ implements
+┌─────────────────────────────────────────────────┐
+│       Infrastructure Layer (Persistence)        │ ← External
+│  - OrderEntity, OrderItemEntity (EF models)    │
+│  - OrderRepository implementation               │
+│  - Database context & migrations                │
+│  - Mapping: Domain ↔ EF Entities               │
+└─────────────────────────────────────────────────┘
+```
+
+**Key Benefits:**
+- ✅ **Testability**: Easy to mock repositories and services
+- ✅ **Maintainability**: Clear separation of concerns
+- ✅ **Flexibility**: Swap EF for Dapper, RabbitMQ for Kafka, etc.
+- ✅ **Domain-Centric**: Business logic independent of infrastructure
+- ✅ **SOLID Principles**: Dependency Inversion, Single Responsibility
+
 ### Key Technologies
 
 - **.NET 8**: Modern framework for building microservices
@@ -18,6 +60,8 @@ This project implements a distributed order processing system with three microse
 - **Redis**: In-memory cache for performance optimization
 - **Docker & Docker Compose**: Containerization and orchestration
 - **Entity Framework Core**: ORM for database operations
+- **FluentValidation**: Declarative validation for request models
+- **Clean Architecture**: Separation of concerns with onion architecture principles
 
 ## 🚀 Quick Start
 
@@ -88,11 +132,54 @@ OrderProcessingSystem/
     │       │   ├── InventoryReservedEvent.cs
     │       │   ├── InventoryInsufficientEvent.cs
     │       │   └── OrderItemDto.cs
-    │       ├── Messaging/          # Messaging interfaces
-    │       │   └── IMessagePublisher.cs
+    │       ├── Messaging/          # Messaging abstractions
+    │       │   ├── IMessagePublisher.cs
+    │       │   ├── IMessageConsumer.cs
+    │       │   ├── RabbitMqPublisher.cs
+    │       │   └── RabbitMqConsumer.cs
     │       └── Constants/          # Shared constants
-    ├── OrderService/               # Order management service (Coming soon)
-    ├── InventoryService/           # Inventory management service (Coming soon)
+    ├── OrderService/               # Order management service
+    │   ├── Application/            # Clean Architecture - Application layer
+    │   │   ├── Interfaces/         # Repository and service abstractions
+    │   │   │   ├── IOrderRepository.cs
+    │   │   │   └── IOrderService.cs
+    │   │   ├── Models/             # Core domain models (clean POCOs)
+    │   │   │   ├── Order.cs
+    │   │   │   ├── OrderItem.cs
+    │   │   │   └── OrderStatus.cs
+    │   │   ├── Services/           # Business logic
+    │   │   │   └── OrderService.cs
+    │   │   ├── DTOs/               # API contracts
+    │   │   │   ├── CreateOrderRequest.cs
+    │   │   │   ├── OrderResponse.cs
+    │   │   │   └── PagedOrderResponse.cs
+    │   │   └── Validators/         # FluentValidation validators
+    │   │       ├── CreateOrderRequestValidator.cs
+    │   │       └── GetOrdersQueryValidator.cs
+    │   ├── Infrastructure/         # Infrastructure concerns
+    │   │   └── Persistence/
+    │   │       ├── OrderDbContext.cs
+    │   │       ├── Entities/       # EF-specific models
+    │   │       │   ├── OrderEntity.cs
+    │   │       │   └── OrderItemEntity.cs
+    │   │       ├── Configurations/ # EF Fluent API configurations
+    │   │       │   ├── OrderEntityConfiguration.cs
+    │   │       │   └── OrderItemEntityConfiguration.cs
+    │   │       └── Repositories/   # Repository implementations
+    │   │           └── OrderRepository.cs
+    │   ├── API/                    # Presentation layer
+    │   │   ├── Controllers/
+    │   │   │   └── OrdersController.cs
+    │   │   └── Filters/            # Action filters
+    │   │       └── ValidatePageSizeAttribute.cs
+    │   ├── Migrations/             # EF Core migrations
+    │   └── Program.cs              # Application entry point
+    ├── InventoryService/           # Inventory management service
+    │   ├── Data/
+    │   ├── Models/
+    │   ├── Services/
+    │   ├── Migrations/
+    │   └── Program.cs
     └── NotificationService/        # Notification service (Coming soon)
 ```
 
@@ -153,6 +240,56 @@ OrderProcessingSystem/
 ```powershell
 dotnet build
 ```
+
+### Run Order Service
+
+```powershell
+cd src/OrderService
+dotnet run
+```
+
+The Order Service will be available at:
+- HTTPS: `https://localhost:5001`
+- HTTP: `http://localhost:5000`
+- Swagger UI: `https://localhost:5001/swagger`
+
+### API Endpoints
+
+**Order Service**:
+
+```http
+# Create Order
+POST /api/orders
+Content-Type: application/json
+{
+  "customerEmail": "customer@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 5
+    }
+  ]
+}
+
+# Get Order by ID
+GET /api/orders/{id}
+
+# List Orders (with cursor pagination)
+GET /api/orders?pageSize=20&customerEmail=test@example.com&status=Pending
+
+# Health Checks
+GET /health/live    # Liveness probe
+GET /health/ready   # Readiness probe (checks DB & RabbitMQ)
+```
+
+**Validation Examples**:
+- Email must be valid format
+- Items list cannot be empty
+- Quantity must be greater than 0
+- Page size must be between 1-100
+- Cursor must be valid timestamp_guid format
+
+See `test-validation.http` for comprehensive validation test examples.
 
 ### Run Tests (Coming soon)
 
@@ -227,13 +364,20 @@ localhost:6379
 ## 📝 Implementation Status
 
 - [x] **Stage 1**: Project Structure & Infrastructure Setup
-- [ ] **Stage 2**: Order Service - Basic API & Database
-- [ ] **Stage 3**: RabbitMQ Integration - Publisher
-- [ ] **Stage 4**: Inventory Service - Consumer & Database
-- [ ] **Stage 5**: Notification Service - Consumer with DLQ
-- [ ] **Stage 6**: Redis Integration - Caching
-- [ ] **Stage 7**: Dockerization - All Services
-- [ ] **Stage 8**: Testing & Documentation
+- [x] **Stage 2**: Order Service - Basic API & Database
+- [x] **Stage 3**: RabbitMQ Integration - Publisher
+- [x] **Stage 4**: Inventory Service - Consumer & Database
+- [x] **Stage 5**: Clean Architecture Refactoring
+  - [x] Onion Architecture implementation
+  - [x] Repository pattern with abstractions
+  - [x] Business logic in service layer
+  - [x] Separation of domain models and EF entities
+  - [x] FluentValidation integration
+  - [x] Thin controllers with presentation concerns only
+- [ ] **Stage 6**: Notification Service - Consumer with DLQ
+- [ ] **Stage 7**: Redis Integration - Caching
+- [ ] **Stage 8**: Dockerization - All Services
+- [ ] **Stage 9**: Testing & Documentation
 
 See `implementation-plan.md` for detailed implementation steps.
 
@@ -253,7 +397,9 @@ This project is available for educational purposes.
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Docker Compose](https://docs.docker.com/compose/)
 - [.NET Microservices Architecture](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/)
+- [FluentValidation](https://docs.fluentvalidation.net/)
+- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
 ---
 
-**Built with ❤️ using .NET 8 and modern microservices patterns**
+**Built with ❤️ using .NET 8, Clean Architecture, and modern microservices patterns**

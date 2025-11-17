@@ -1,0 +1,84 @@
+# FluentValidation Test Examples
+
+## Test Create Order - Valid Request
+POST https://localhost:5001/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "test@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 5
+    }
+  ]
+}
+
+###
+
+## Test Create Order - Invalid Email
+POST https://localhost:5001/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "invalid-email",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 5
+    }
+  ]
+}
+
+###
+
+## Test Create Order - Empty Email
+POST https://localhost:5001/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 5
+    }
+  ]
+}
+
+###
+
+## Test Create Order - No Items
+POST https://localhost:5001/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "test@example.com",
+  "items": []
+}
+
+###
+
+## Test Create Order - Invalid Quantity
+POST https://localhost:5001/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "test@example.com",
+  "items": [
+    {
+      "productCode": "PROD-001",
+      "quantity": 0
+    }
+  ]
+}
+
+###
+
+## Test Get Orders - Invalid Page Size
+GET https://localhost:5001/api/orders?pageSize=200
+
+###
+
+## Test Get Orders - Invalid Cursor
+GET https://localhost:5001/api/orders?cursor=invalid-cursor-format
