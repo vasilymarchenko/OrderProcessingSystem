@@ -13,11 +13,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderProcessingSystem.Share
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OrderService", "OrderService", "{D5064FC8-1F49-54B6-E1C8-B23A6140528A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService", "src\OrderService\OrderService\OrderService.csproj", "{A44327FE-42E7-491F-9821-94E25039D712}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService", "src\OrderService\OrderService.csproj", "{A44327FE-42E7-491F-9821-94E25039D712}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "InventoryService", "InventoryService", "{5C8FFA71-ABED-225F-EBAA-B00A0796978F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventoryService", "src\InventoryService\InventoryService\InventoryService.csproj", "{27F8C6DB-10DB-49DC-9035-3BB865D3949B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventoryService", "src\InventoryService\InventoryService.csproj", "{27F8C6DB-10DB-49DC-9035-3BB865D3949B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
