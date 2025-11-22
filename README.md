@@ -91,7 +91,30 @@ Verify all services are running:
 docker-compose ps
 ```
 
-### 3. Access Management UIs
+### 3. Apply Database Migrations
+
+Before running the services for the first time, you need to create the database schema by applying migrations:
+
+**Order Service:**
+```powershell
+cd src/OrderService
+dotnet ef database update
+```
+
+**Inventory Service:**
+```powershell
+cd src/InventoryService
+dotnet ef database update
+```
+
+This will:
+- Create the `orders_db` and `inventory_db` databases
+- Create tables with proper schema, indexes, and constraints
+- Seed initial inventory data (PROD-001, PROD-002, PROD-003)
+
+> **Note:** Migrations are now applied automatically on application startup via `context.Database.Migrate()` in `Program.cs`. You can skip this step and let the services apply migrations on first run, but running them manually first is recommended for better control and to catch any issues early.
+
+### 4. Access Management UIs
 
 - **RabbitMQ Management**: http://localhost:15672
   - Username: `guest`
@@ -103,7 +126,7 @@ docker-compose ps
 
 - **Redis**: `localhost:6379`
 
-### 4. Check Service Status
+### 5. Check Service Status
 
 ```powershell
 # Check RabbitMQ
@@ -115,6 +138,24 @@ docker exec orderprocessing-postgres pg_isready -U postgres
 # Check Redis
 docker exec orderprocessing-redis redis-cli ping
 ```
+
+### 6. Run the Services
+
+**Terminal 1 - Order Service:**
+```powershell
+cd src/OrderService
+dotnet run
+```
+
+**Terminal 2 - Inventory Service:**
+```powershell
+cd src/InventoryService
+dotnet run
+```
+
+The services will be available at:
+- **Order Service**: `https://localhost:5001` (Swagger: `https://localhost:5001/swagger`)
+- **Inventory Service**: Health checks at `/health/live` and `/health/ready`
 
 ## 📁 Project Structure
 
@@ -149,16 +190,22 @@ OrderProcessingSystem/
     │   │   │   └── OrderStatus.cs
     │   │   ├── Services/           # Business logic
     │   │   │   └── OrderService.cs
-    │   │   ├── DTOs/               # API contracts
-    │   │   │   ├── CreateOrderRequest.cs
-    │   │   │   ├── OrderResponse.cs
-    │   │   │   └── PagedOrderResponse.cs
     │   │   └── Validators/         # FluentValidation validators
     │   │       ├── CreateOrderRequestValidator.cs
     │   │       └── GetOrdersQueryValidator.cs
+    │   ├── Controllers/            # Presentation layer
+    │   │   └── OrdersController.cs
+    │   ├── DTOs/                   # API contracts
+    │   │   ├── CreateOrderRequest.cs
+    │   │   ├── OrderResponse.cs
+    │   │   └── PagedOrderResponse.cs
+    │   ├── API/
+    │   │   └── Filters/            # Action filters
+    │   │       └── ValidatePageSizeAttribute.cs
     │   ├── Infrastructure/         # Infrastructure concerns
     │   │   └── Persistence/
     │   │       ├── OrderDbContext.cs
+    │   │       ├── OrderDbContextFactory.cs  # EF design-time factory
     │   │       ├── Entities/       # EF-specific models
     │   │       │   ├── OrderEntity.cs
     │   │       │   └── OrderItemEntity.cs
@@ -167,19 +214,31 @@ OrderProcessingSystem/
     │   │       │   └── OrderItemEntityConfiguration.cs
     │   │       └── Repositories/   # Repository implementations
     │   │           └── OrderRepository.cs
-    │   ├── API/                    # Presentation layer
-    │   │   ├── Controllers/
-    │   │   │   └── OrdersController.cs
-    │   │   └── Filters/            # Action filters
-    │   │       └── ValidatePageSizeAttribute.cs
     │   ├── Migrations/             # EF Core migrations
     │   └── Program.cs              # Application entry point
     ├── InventoryService/           # Inventory management service
-    │   ├── Data/
-    │   ├── Models/
-    │   ├── Services/
-    │   ├── Migrations/
-    │   └── Program.cs
+    │   ├── Application/            # Clean Architecture - Application layer
+    │   │   ├── Interfaces/         # Repository and service abstractions
+    │   │   │   ├── IInventoryRepository.cs
+    │   │   │   └── IInventoryService.cs
+    │   │   ├── Models/             # Core domain models
+    │   │   │   └── InventoryItem.cs
+    │   │   ├── Services/           # Business logic
+    │   │   │   └── InventoryService.cs
+    │   │   └── Handlers/           # Event handlers
+    │   │       └── OrderPlacedHandler.cs
+    │   ├── Infrastructure/         # Infrastructure concerns
+    │   │   └── Persistence/
+    │   │       ├── InventoryDbContext.cs
+    │   │       ├── InventoryDbContextFactory.cs  # EF design-time factory
+    │   │       ├── Entities/       # EF-specific models
+    │   │       │   └── InventoryItemEntity.cs
+    │   │       ├── Configurations/ # EF Fluent API configurations
+    │   │       │   └── InventoryItemEntityConfiguration.cs
+    │   │       └── Repositories/   # Repository implementations
+    │   │           └── InventoryRepository.cs
+    │   ├── Migrations/             # EF Core migrations
+    │   └── Program.cs              # Application entry point
     └── NotificationService/        # Notification service (Coming soon)
 ```
 
@@ -241,8 +300,48 @@ OrderProcessingSystem/
 dotnet build
 ```
 
-### Run Order Service
+### Database Migrations
 
+**Create a new migration:**
+```powershell
+# Order Service
+cd src/OrderService
+dotnet ef migrations add <MigrationName>
+
+# Inventory Service
+cd src/InventoryService
+dotnet ef migrations add <MigrationName>
+```
+
+**Apply migrations:**
+```powershell
+# Order Service
+cd src/OrderService
+dotnet ef database update
+
+# Inventory Service
+cd src/InventoryService
+dotnet ef database update
+```
+
+**Rollback to specific migration:**
+```powershell
+dotnet ef database update <PreviousMigrationName>
+```
+
+**Remove last migration (if not applied):**
+```powershell
+dotnet ef migrations remove
+```
+
+**List all migrations:**
+```powershell
+dotnet ef migrations list
+```
+
+### Run Services
+
+**Order Service:**
 ```powershell
 cd src/OrderService
 dotnet run
@@ -252,6 +351,15 @@ The Order Service will be available at:
 - HTTPS: `https://localhost:5001`
 - HTTP: `http://localhost:5000`
 - Swagger UI: `https://localhost:5001/swagger`
+
+**Inventory Service:**
+```powershell
+cd src/InventoryService
+dotnet run
+```
+
+The Inventory Service will be available at:
+- Health Checks: `/health/live` and `/health/ready`
 
 ### API Endpoints
 

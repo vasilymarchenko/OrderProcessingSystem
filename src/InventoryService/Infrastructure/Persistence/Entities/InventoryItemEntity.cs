@@ -1,6 +1,7 @@
-namespace InventoryService.Models;
+namespace InventoryService.Infrastructure.Persistence.Entities;
 
-public class InventoryItem
+// EF-specific model
+public class InventoryItemEntity
 {
     public Guid Id { get; set; }
     public string ProductCode { get; set; } = string.Empty;
