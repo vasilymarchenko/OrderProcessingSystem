@@ -1,10 +1,12 @@
 using OrderService.Application.Models;
+using OrderService.Models;
 
 namespace OrderService.Application.Interfaces;
 
 public interface IOrderRepository
 {
     Task<Order> AddAsync(Order order, CancellationToken cancellationToken = default);
+    Task<Order> AddOrderWithOutboxAsync(Order order, OutboxMessage outboxMessage, CancellationToken cancellationToken = default);
     Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<Order> Orders, bool HasMore)> GetPagedAsync(
         DateTime? cursorTimestamp,

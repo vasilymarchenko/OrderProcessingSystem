@@ -33,12 +33,16 @@ builder.Services.AddSingleton<RabbitMQ.Client.IConnection>(rabbitConnection);
 builder.Services.AddSingleton<IMessagePublisher>(sp =>
 {
     var connection = sp.GetRequiredService<RabbitMQ.Client.IConnection>();
-    return new RabbitMqPublisher(connection, rabbitExchangeName);
+    var logger = sp.GetRequiredService<ILogger<RabbitMqPublisher>>();
+    return new RabbitMqPublisher(connection, rabbitExchangeName, logger);
 });
 
 // Register Application Services
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService.Application.Services.OrderService>();
+
+// Register Outbox Publisher Background Service
+builder.Services.AddHostedService<OrderService.Application.Services.OutboxPublisherService>();
 
 // Add health checks
 // Liveness: Fast check that the service is running (no dependencies checked)

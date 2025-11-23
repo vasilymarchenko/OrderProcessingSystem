@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderService.Application.Interfaces;
 using OrderService.Application.Models;
 using OrderService.Infrastructure.Persistence.Entities;
+using OrderService.Models;
 
 namespace OrderService.Infrastructure.Persistence.Repositories;
 
@@ -19,6 +20,18 @@ public class OrderRepository : IOrderRepository
         var entity = MapToEntity(order);
         
         _context.Orders.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        
+        return MapToDomain(entity);
+    }
+
+    public async Task<Order> AddOrderWithOutboxAsync(Order order, OutboxMessage outboxMessage, CancellationToken cancellationToken = default)
+    {
+        var entity = MapToEntity(order);
+        
+        _context.Orders.Add(entity);
+        _context.OutboxMessages.Add(outboxMessage);
+        
         await _context.SaveChangesAsync(cancellationToken);
         
         return MapToDomain(entity);

@@ -4,22 +4,21 @@ using OrderProcessingSystem.Shared.Messaging;
 using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
 using OrderService.Application.Models;
+using OrderService.Models;
+using System.Text.Json;
 
 namespace OrderService.Application.Services;
 
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _repository;
-    private readonly IMessagePublisher _publisher;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
         IOrderRepository repository,
-        IMessagePublisher publisher,
         ILogger<OrderService> logger)
     {
         _repository = repository;
-        _publisher = publisher;
         _logger = logger;
     }
 
@@ -40,13 +39,7 @@ public class OrderService : IOrderService
             }).ToList()
         };
 
-        // Save to repository
-        order = await _repository.AddAsync(order, cancellationToken);
-
-        _logger.LogInformation("Order {OrderId} created for customer {CustomerEmail}",
-            order.Id, order.CustomerEmail);
-
-        // Publish OrderPlacedEvent
+        // Create OrderPlacedEvent for outbox
         var orderPlacedEvent = new OrderPlacedEvent(
             OrderId: order.Id,
             CustomerEmail: order.CustomerEmail,
@@ -54,10 +47,23 @@ public class OrderService : IOrderService
             Timestamp: DateTime.UtcNow
         );
 
-        await _publisher.PublishAsync("order.placed", orderPlacedEvent);
+        // Create outbox message
+        var outboxMessage = new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            EventType = nameof(OrderPlacedEvent),
+            RoutingKey = "order.placed",
+            Payload = JsonSerializer.Serialize(orderPlacedEvent),
+            Status = OutboxMessageStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            RetryCount = 0
+        };
 
-        _logger.LogInformation("OrderPlacedEvent published for order {OrderId} with routing key 'order.placed'",
-            order.Id);
+        // Save order and outbox message in single transaction
+        order = await _repository.AddOrderWithOutboxAsync(order, outboxMessage, cancellationToken);
+
+        _logger.LogInformation("Order {OrderId} created for customer {CustomerEmail} with outbox message {OutboxId}",
+            order.Id, order.CustomerEmail, outboxMessage.Id);
 
         return order;
     }

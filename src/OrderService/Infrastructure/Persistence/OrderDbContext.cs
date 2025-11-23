@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OrderService.Infrastructure.Persistence.Entities;
 using OrderService.Infrastructure.Persistence.Configurations;
+using OrderService.Models;
 
 namespace OrderService.Infrastructure.Persistence;
 
@@ -13,6 +14,7 @@ public class OrderDbContext : DbContext
 
     public DbSet<OrderEntity> Orders { get; set; }
     public DbSet<OrderItemEntity> OrderItems { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
