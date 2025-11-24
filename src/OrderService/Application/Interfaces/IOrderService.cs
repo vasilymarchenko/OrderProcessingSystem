@@ -1,5 +1,5 @@
 using OrderService.Application.DTOs;
-using OrderService.Application.Models;
+using OrderService.Models;
 
 namespace OrderService.Application.Interfaces;
 

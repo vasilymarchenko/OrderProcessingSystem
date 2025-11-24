@@ -1,5 +1,5 @@
 using OrderProcessingSystem.Shared.Events;
-using OrderService.Application.Models;
+using OrderService.Models;
 
 namespace OrderService.Application.DTOs;
 

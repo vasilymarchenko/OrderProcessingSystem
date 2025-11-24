@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderProcessingSystem.Shared.Events;
 using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
-using OrderService.Application.Models;
+using OrderService.Models;
 using OrderService.API.Filters;
 
 namespace OrderService.API.Controllers;

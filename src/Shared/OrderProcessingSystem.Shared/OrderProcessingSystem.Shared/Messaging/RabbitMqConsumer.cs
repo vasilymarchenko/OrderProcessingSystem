@@ -10,9 +10,9 @@ public class RabbitMqConsumer : IMessageConsumer, IDisposable
     private readonly IChannel _channel;
     private readonly string _exchangeName;
 
-    public RabbitMqConsumer(IConnection connection, string exchangeName)
+    public RabbitMqConsumer(IChannel channel, string exchangeName)
     {
-        _channel = connection.CreateChannelAsync().GetAwaiter().GetResult();
+        _channel = channel;
         _exchangeName = exchangeName;
     }
 

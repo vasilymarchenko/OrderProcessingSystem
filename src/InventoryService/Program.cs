@@ -19,17 +19,22 @@ var rabbitExchangeName = rabbitConfig["ExchangeName"] ?? "orders";
 var rabbitFactory = new RabbitMQ.Client.ConnectionFactory { HostName = rabbitHost };
 var rabbitConnection = await rabbitFactory.CreateConnectionAsync();
 
+// Create channels
+var publisherChannel = await rabbitConnection.CreateChannelAsync();
+// Publisher confirms are enabled by default in RabbitMQ.Client 7.x
+
+var consumerChannel = await rabbitConnection.CreateChannelAsync();
+await consumerChannel.BasicQosAsync(0, 1, false); // Prefetch 1
+
 // Register RabbitMQ connection and messaging
 builder.Services.AddSingleton<RabbitMQ.Client.IConnection>(rabbitConnection);
 builder.Services.AddSingleton<IMessagePublisher>(sp =>
 {
-    var connection = sp.GetRequiredService<RabbitMQ.Client.IConnection>();
-    return new RabbitMqPublisher(connection, rabbitExchangeName);
+    return new RabbitMqPublisher(publisherChannel, rabbitExchangeName);
 });
 builder.Services.AddSingleton<IMessageConsumer>(sp =>
 {
-    var connection = sp.GetRequiredService<RabbitMQ.Client.IConnection>();
-    return new RabbitMqConsumer(connection, rabbitExchangeName);
+    return new RabbitMqConsumer(consumerChannel, rabbitExchangeName);
 });
 
 // Register Application Services

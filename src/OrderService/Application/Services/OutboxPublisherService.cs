@@ -86,9 +86,7 @@ public class OutboxPublisherService : BackgroundService
                 {
                     message.Status = OutboxMessageStatus.Failed;
                     message.RetryCount++;
-                    message.LastError = result == PublishResult.FailedNoRoute
-                        ? "No route available for message"
-                        : "Broker error";
+                    message.LastError = "Broker error";
                     message.NextRetryAt = DateTime.UtcNow.AddSeconds(Math.Pow(2, message.RetryCount)); // Exponential backoff
 
                     _logger.LogWarning(

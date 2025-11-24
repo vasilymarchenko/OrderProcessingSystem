@@ -3,7 +3,6 @@ using OrderProcessingSystem.Shared.Events;
 using OrderProcessingSystem.Shared.Messaging;
 using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
-using OrderService.Application.Models;
 using OrderService.Models;
 using System.Text.Json;
 
